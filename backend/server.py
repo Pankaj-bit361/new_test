@@ -1,13 +1,55 @@
 import os
-from datetime import datetime
+import jwt
+import bcrypt
+from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
 
 app = FastAPI()
+
+# JWT Configuration
+JWT_SECRET = os.environ.get("JWT_SECRET", "super-secret-key-change-this-in-prod")
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
+
+# Helper Functions
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def get_password_hash(password: str):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str):
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Models
+class UserSignup(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 
 # CORS configuration
 app.add_middleware(
@@ -50,6 +92,32 @@ class Deal(BaseModel):
 @app.get("/api")
 async def health_check():
     return {"status": "healthy", "message": "Nexus CRM API is running"}
+
+@app.post("/api/auth/signup")
+async def signup(user: UserSignup):
+    existing_user = await db.users.find_one({"email": user.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = get_password_hash(user.password)
+    new_user = {
+        "name": user.name,
+        "email": user.email,
+        "password": hashed_password,
+        "createdAt": datetime.utcnow()
+    }
+    result = await db.users.insert_one(new_user)
+    token = create_access_token({"sub": user.email, "name": user.name})
+    return {"token": token, "user": {"name": user.name, "email": user.email}}
+
+@app.post("/api/auth/login")
+async def login(user: UserLogin):
+    db_user = await db.users.find_one({"email": user.email})
+    if not db_user or not verify_password(user.password, db_user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    token = create_access_token({"sub": db_user["email"], "name": db_user["name"]})
+    return {"token": token, "user": {"name": db_user["name"], "email": db_user["email"]}}
 
 @app.get("/api/stats")
 async def get_stats():
