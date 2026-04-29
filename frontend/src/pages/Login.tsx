@@ -47,8 +47,8 @@ export default function Login() {
             </div>
           </div>
           <div className="text-center space-y-1">
-            <CardTitle className="text-3xl font-black tracking-tight">Welcome Pankaj</CardTitle>
-            <CardDescription className="text-slate-500 font-medium">Log in to your Nexus CRM account</CardDescription>
+            <CardTitle className="text-3xl font-black tracking-tight">Welcome Rahul</CardTitle>
+            <CardDescription className="text-slate-500 font-medium">Log in to your Rahul CRM account</CardDescription>
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>

@@ -46,7 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="bg-primary p-2.5 rounded-2xl shadow-xl shadow-primary/30">
             <Briefcase className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className="text-2xl font-black tracking-tighter text-foreground">Pankaj</span>
+          <span className="text-2xl font-black tracking-tighter text-foreground">Rahul</span>
         </div>
         <nav className="flex-1">
           <NavLinks />
@@ -78,7 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <div className="bg-primary p-2.5 rounded-2xl shadow-xl shadow-primary/30">
                     <Briefcase className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <span className="text-2xl font-black tracking-tighter">Pankaj</span>
+                  <span className="text-2xl font-black tracking-tighter">Rahul</span>
                 </div>
                 <nav>
                   <NavLinks />
